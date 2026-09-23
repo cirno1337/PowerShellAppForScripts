@@ -1,0 +1,31 @@
+{
+  "environment": "Development",
+  "tenant": {
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "tenantName": "ecm4nsg.onmicrosoft.com",
+    "adminSiteUrl": "https://ecm4nsg-admin.sharepoint.com"
+  },
+  "sharePoint": {
+    "baseUrl": "https://ecm4nsg.sharepoint.com/sites/",
+    "siteUrlPattern": "{Number}-{Name}"
+  },
+  "authentication": {
+    "mode": "Mock",
+    "clientId": "00000000-0000-0000-0000-000000000000",
+    "certificate": {
+      "path": "C:/certs/nsg-automation.pfx",
+      "passwordEnvironmentVariable": "NSG_CERT_PASSWORD"
+    }
+  },
+  "teams": {
+    "defaultChannels": [
+      "General",
+      "Project Management",
+      "Documentation"
+    ]
+  },
+  "logging": {
+    "path": "logs/nsg-automation.log",
+    "level": "Info"
+  }
+}

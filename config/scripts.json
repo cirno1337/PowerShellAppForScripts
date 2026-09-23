@@ -1,0 +1,24 @@
+{
+  "scripts": [
+    {
+      "id": "project-provisioning",
+      "name": "Create SharePoint Project",
+      "description": "Creates SharePoint site, Team and default channels",
+      "script": "ProjectProvisioner.ps1",
+      "parameterName": "Project",
+      "inputs": [
+        { "name": "Name", "prompt": "Project name", "required": true },
+        { "name": "Number", "prompt": "Project number", "required": true },
+        { "name": "Owner", "prompt": "Project owner (email)", "required": true }
+      ]
+    },
+    {
+      "id": "hello-world",
+      "name": "Hello World Demo",
+      "description": "Simple demonstration script",
+      "script": "HelloWorld.ps1",
+      "parameterName": "Inputs",
+      "inputs": []
+    }
+  ]
+}

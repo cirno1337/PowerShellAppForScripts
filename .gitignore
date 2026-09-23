@@ -1,0 +1,20 @@
+# Real configuration / secrets - never commit
+config/settings.json
+config/*.local.json
+
+# Logs
+logs/
+*.log
+
+# Pester / test output
+TestResults/
+*.TestResults.xml
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# PowerShell module analysis cache
+*.psproj.user
