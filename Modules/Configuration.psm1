@@ -91,6 +91,9 @@ function Test-NsgConfiguration {
         if (-not $Configuration.tenant.tenantId -and -not $Configuration.tenant.tenantName) {
             $errors.Add("'tenant.tenantId' or 'tenant.tenantName' is required when mode is 'Certificate'.")
         }
+        if (-not $Configuration.tenant.adminSiteUrl) {
+            $errors.Add("'tenant.adminSiteUrl' is required when mode is 'Certificate' (site creation must connect to an existing site, not the one being created).")
+        }
         if (-not $Configuration.authentication.certificate.path) {
             $errors.Add("'authentication.certificate.path' is required when mode is 'Certificate'.")
         }

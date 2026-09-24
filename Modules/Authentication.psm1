@@ -81,6 +81,9 @@ function Connect-NsgCertificateContext {
         Assert-NsgPnPModuleAvailable
 
         $certPath = $Configuration.authentication.certificate.path
+        if (-not [System.IO.Path]::IsPathRooted($certPath) -and $Configuration._RepoRoot) {
+            $certPath = Join-Path -Path $Configuration._RepoRoot -ChildPath $certPath
+        }
         if (-not (Test-Path -Path $certPath)) {
             throw "Certificate not found at '$certPath'."
         }
@@ -88,8 +91,15 @@ function Connect-NsgCertificateContext {
         $certPassword = Resolve-NsgCertificatePassword -Configuration $Configuration
         $tenantIdentifier = if ($Configuration.tenant.tenantId) { $Configuration.tenant.tenantId } else { $Configuration.tenant.tenantName }
 
+        # $SiteUrl is the project's site - it doesn't exist yet the first time
+        # we run (that's exactly what New-PnPSite is about to create), so
+        # Connect-PnPOnline can't target it. Site *creation* requires being
+        # connected to an existing site, and the tenant admin center is the
+        # one guaranteed to already exist.
+        $connectUrl = if ($Configuration.tenant.adminSiteUrl) { $Configuration.tenant.adminSiteUrl } else { $SiteUrl }
+
         $connectParams = @{
-            Url                = $SiteUrl
+            Url                = $connectUrl
             ClientId           = $Configuration.authentication.clientId
             Tenant             = $tenantIdentifier
             CertificatePath    = $certPath

@@ -291,18 +291,46 @@ Install-Module PnP.PowerShell -Scope CurrentUser
 
 Using an app-only (certificate) registration, grant admin consent for:
 
-| Permission | Type | Why |
-|---|---|---|
-| `Sites.FullControl.All` | Application | Create/configure SharePoint site collections |
-| `Group.ReadWrite.All` | Application | Create the Microsoft 365 Group backing the Team |
-| `Directory.ReadWrite.All` | Application | Group/owner provisioning in Entra ID |
-| `User.Read.All` | Application | Resolve the owner's UPN/object ID |
+| Permission | API | Type | Why |
+|---|---|---|---|
+| `Sites.FullControl.All` | **Office 365 SharePoint Online** | Application | Create/configure SharePoint site collections via the tenant admin API |
+| `Group.ReadWrite.All` | Microsoft Graph | Application | Create the Microsoft 365 Group backing the Team |
+| `TeamMember.ReadWrite.All` | Microsoft Graph | Application | Assign the project owner as the Team's owner during creation |
+| `Directory.ReadWrite.All` | Microsoft Graph | Application | Group/owner provisioning in Entra ID |
+| `User.Read.All` | Microsoft Graph | Application | Resolve the owner's UPN/object ID |
 
-Notes:
+This project was validated end-to-end against a real tenant (`ecm4nsg`), and
+that surfaced two permission gotchas that are easy to miss and worth calling
+out explicitly:
 
-- `New-PnPTeamsTeam` (teamifying a Microsoft 365 Group) is asynchronous on
-  Microsoft's side; it can take a short while before the Team is fully usable
-  even after the cmdlet returns successfully.
+- **`Sites.FullControl.All` under "Microsoft Graph" is not the same
+  permission as `Sites.FullControl.All` under "Office 365 SharePoint
+  Online".** The provisioner's SharePoint calls (`New-PnPSite`,
+  `Get-PnPTenantSite`) go through the *legacy SharePoint admin API*, not
+  Graph. Granting only the Graph version passes Graph calls fine (e.g. Team
+  creation) but the SharePoint site step fails with a `401 Unauthorized`. In
+  the app registration, add the permission from **APIs my organization
+  uses → Office 365 SharePoint Online**, not the Microsoft Graph entry.
+- **Without `TeamMember.ReadWrite.All`, Team creation fails *after* the
+  Microsoft 365 Group and Team already exist.** `New-PnPTeamsTeam` creates
+  the group, teamifies it, and only then adds the owner as a last step; if
+  that step 403s, PnP does not roll anything back. You end up with a real,
+  ownerless Team sitting in the tenant that needs to be manually cleaned up
+  (`Remove-PnPMicrosoft365Group` + `Remove-PnPDeletedMicrosoft365Group`) or
+  fixed by hand before retrying, since the provisioner's existence check
+  will otherwise just see "Team already exists" and skip it on a re-run
+  without ever assigning the missing owner.
+
+Other notes:
+
+- **Admin consent can take several minutes to actually take effect** even
+  after the portal shows it granted - during testing, both permission fixes
+  above needed roughly 5-10 minutes before a fresh token reflected them.
+  A `401`/`403` right after granting a permission is not necessarily a sign
+  the permission was configured wrong; retry after a short wait first.
+- `New-PnPTeamsTeam` (creating/teamifying a Microsoft 365 Group) is
+  asynchronous on Microsoft's side; it can take a short while before the
+  Team is fully usable even after the cmdlet returns successfully.
 - The "General" channel always exists on a new Team automatically - the
   provisioner intentionally skips creating it again (see `Add-NsgDefaultChannels`
   in `Modules/Teams.psm1`) to avoid a guaranteed, noisy failure.
@@ -331,10 +359,11 @@ Install-Module PSScriptAnalyzer -Scope CurrentUser
 Invoke-ScriptAnalyzer -Path . -Recurse
 ```
 
-> This prototype was developed in an environment without a PowerShell
-> runtime available to execute `Invoke-Pester`/`Invoke-ScriptAnalyzer`
-> directly. Run the commands above locally (or against `ecm4nsg`) before
-> relying on this as a tested baseline, and report back anything that fails.
+All 33 Pester tests and PSScriptAnalyzer pass cleanly, and the full flow
+(SharePoint site + Team + channels) has been run end-to-end against the real
+`ecm4nsg` tenant in Certificate mode and verified afterward with read-only
+`Get-Pn*` calls - see the permission gotchas above, which is exactly what
+that real run surfaced.
 
 ## Project structure
 
