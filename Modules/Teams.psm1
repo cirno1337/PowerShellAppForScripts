@@ -1,9 +1,8 @@
 <#
     Teams.psm1
     Microsoft Team + channel provisioning, built on PnP.PowerShell's Graph
-    wrappers (New-PnPMicrosoft365Group / New-PnPTeamsTeam / New-PnPTeamsChannel)
-    so the project only depends on one PowerShell module for both SharePoint
-    and Teams.
+    wrappers (New-PnPTeamsTeam / Add-PnPTeamsChannel) so the project only
+    depends on one PowerShell module for both SharePoint and Teams.
 #>
 
 function Get-NsgTeamMailNickname {
@@ -41,15 +40,23 @@ function Test-NsgTeamExists {
         return $null
     }
 
-    $existing = Get-PnPMicrosoft365Group -Identity $MailNickname -ErrorAction SilentlyContinue
+    # -Identity only resolves a group ID (GUID) or an exact DisplayName, never
+    # a mail nickname - a nickname lookup has to go through -Filter instead.
+    $existing = Get-PnPMicrosoft365Group -Filter "mailNickname eq '$MailNickname'" -ErrorAction SilentlyContinue | Select-Object -First 1
     return $existing
 }
 
 function New-NsgTeam {
     <#
         .SYNOPSIS
-        Creates a Microsoft 365 Group and teamifies it, unless it already
-        exists or we are in Mock/DryRun.
+        Creates a Microsoft 365 Group and teamifies it in one call, unless it
+        already exists or we are in Mock/DryRun. Deliberately a single
+        New-PnPTeamsTeam call (group + teamify together) rather than a
+        separate New-PnPMicrosoft365Group followed by New-PnPTeamsTeam
+        -GroupId: PnP's combined path already waits for the new group to
+        become available to Graph before teamifying it, which a manual
+        two-step call would otherwise have to replicate itself to avoid a
+        race against Graph's eventual consistency.
 
         .OUTPUTS
         PSCustomObject: Success, TeamId, DisplayName, Skipped, Mocked, Error
@@ -96,12 +103,11 @@ function New-NsgTeam {
             return $result
         }
 
-        $group = New-PnPMicrosoft365Group -DisplayName $displayName -MailNickname $mailNickname -Description "Project team for $displayName" -Owners $Project.Owner -ErrorAction Stop
-        New-PnPTeamsTeam -GroupId $group.Id -ErrorAction Stop | Out-Null
+        $team = New-PnPTeamsTeam -DisplayName $displayName -MailNickName $mailNickname -Description "Project team for $displayName" -Owners @($Project.Owner) -ErrorAction Stop
 
-        Write-NsgLog "Created Team: $displayName ($($group.Id))" -Level Success
+        Write-NsgLog "Created Team: $displayName ($($team.GroupId))" -Level Success
         $result.Success = $true
-        $result.TeamId = $group.Id
+        $result.TeamId = $team.GroupId
         return $result
     }
     catch {
@@ -153,7 +159,7 @@ function Add-NsgDefaultChannels {
         }
 
         try {
-            New-PnPTeamsChannel -Team $TeamId -DisplayName $channel -ErrorAction Stop | Out-Null
+            Add-PnPTeamsChannel -Team $TeamId -DisplayName $channel -ErrorAction Stop | Out-Null
             Write-NsgLog "Created channel: $channel" -Level Success
             $created.Add($channel)
         }

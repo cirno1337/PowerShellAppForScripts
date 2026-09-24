@@ -82,7 +82,12 @@ function New-NsgSharePointSite {
             return $result
         }
 
-        New-PnPSite -Type TeamSite -Title $Project.Name -Url $SiteUrl -Owner $Project.Owner -ErrorAction Stop | Out-Null
+        # TeamSiteWithoutMicrosoft365Group: a modern team site at an explicit
+        # -Url with an explicit -Owner, and no Microsoft 365 group of its own.
+        # The project's Team (with its own group) is provisioned separately
+        # by Teams.psm1 - using plain -Type TeamSite here would create a
+        # second, redundant Microsoft 365 group tied to this site.
+        New-PnPSite -Type TeamSiteWithoutMicrosoft365Group -Title $Project.Name -Url $SiteUrl -Owner $Project.Owner -Wait -ErrorAction Stop | Out-Null
         Write-NsgLog "Created SharePoint site: $SiteUrl" -Level Success
         $result.Success = $true
         return $result

@@ -44,10 +44,14 @@ testable and reusable.
 ### Why one module for SharePoint and Teams (PnP.PowerShell only)
 
 Teams provisioning is implemented via PnP's Graph-backed cmdlets
-(`New-PnPMicrosoft365Group`, `New-PnPTeamsTeam`, `New-PnPTeamsChannel`)
-instead of pulling in the separate `MicrosoftTeams` module. That keeps
-authentication to a single `Connect-PnPOnline` call and a single module
-dependency for the whole provisioning path.
+(`New-PnPTeamsTeam`, `Add-PnPTeamsChannel`) instead of pulling in the
+separate `MicrosoftTeams` module. That keeps authentication to a single
+`Connect-PnPOnline` call and a single module dependency for the whole
+provisioning path. `New-PnPTeamsTeam -DisplayName ...` creates the
+Microsoft 365 Group *and* teamifies it in one call (PnP handles waiting for
+the new group to become available to Graph internally); the SharePoint site
+is created separately as `-Type TeamSiteWithoutMicrosoft365Group` so it
+doesn't spin up a second, redundant group of its own.
 
 ### Why Authentication decides Mock vs. real, not SharePoint/Teams
 
